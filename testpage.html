@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elite Track Team Fundraiser</title>
+
+    <!-- QR Code Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #0f172a;
+            color: white;
+        }
+
+        header {
+            text-align: center;
+            padding: 30px;
+            background: linear-gradient(90deg, #c8102e, #002b5c);
+        }
+
+        header img {
+            width: 80px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 30px auto;
+            background: #1e293b;
+            padding: 25px;
+            border-radius: 10px;
+        }
+
+        label {
+            display: block;
+            margin-top: 15px;
+            font-weight: bold;
+        }
+
+        select,
+        input {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            border-radius: 5px;
+            border: none;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            margin-top: 20px;
+            background: #00c244;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #00a63a;
+        }
+
+        .section {
+            margin-top: 40px;
+        }
+
+        .total-box {
+            margin-top: 20px;
+            font-size: 22px;
+            text-align: center;
+            color: #00ff99;
+        }
+
+        .admin-panel {
+            background: #334155;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+
+        footer {
+            text-align: center;
+            padding: 20px;
+            margin-top: 40px;
+            background: black;
+        }
+
+        #countdown {
+            margin-top: 10px;
+            font-size: 20px;
+            color: #ffcc00;
+        }
+
+        .sponsors img {
+            width: 120px;
+            margin: 10px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <img src="https://cdn-icons-png.flaticon.com/512/857/857455.png" alt="Track Logo">
+        <h1>Elite Track Team Fundraiser</h1>
+        <p>Support Our Athletes</p>
+        <div id="countdown"></div>
+    </header>
+
+    <div class="container">
+
+        <h2>Make a Donation</h2>
+
+        <label>Select Athlete</label>
+        <select id="athleteSelect"></select>
+
+        <label>Event Number</label>
+        <input type="text" id="eventNumber" readonly>
+
+        <label>Donation Amount ($)</label>
+        <input type="number" id="amount" min="1" placeholder="Enter amount">
+
+        <button onclick="donate()">Donate via Cash App</button>
+
+        <div id="qrcode" style="text-align:center; margin-top:20px;"></div>
+
+        <div class="total-box">
+            Total Raised: $<span id="totalRaised">0</span>
+        </div>
+
+        <div class="section">
+            <h3>Athletes</h3>
+            <ul id="athleteList"></ul>
+        </div>
+
+        <div class="section sponsors">
+            <h3>Sponsors</h3>
+            <img src="https://upload.wikimedia.org/wikipedia/commons/a/a6/Logo_NIKE.svg" alt="Nike">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/2/20/Adidas_Logo.svg" alt="Adidas">
+        </div>
+
+        <div class="section admin-panel">
+            <h3>Admin Panel</h3>
+            <input type="password" id="adminPass" placeholder="Enter Admin Password">
+            <button onclick="unlockAdmin()">Unlock</button>
+
+            <div id="adminControls" style="display:none;">
+                <input type="text" id="newName" placeholder="Athlete Name">
+                <input type="text" id="newEvent" placeholder="Event Number">
+                <button onclick="addAthlete()">Add Athlete</button>
+            </div>
+        </div>
+
+    </div>
+
+    <footer>
+        © 2026 Elite Track Team
+    </footer>
+
+    <script>
+        /* ================= SETTINGS ================= */
+
+        // Enter your Cash App name (with OR without $)
+        let cashTag = "YourCashTag";
+        const adminPassword = "ChangeThisPassword";
+        const eventDate = new Date("April 30, 2026 18:00:00").getTime();
+
+        // Clean CashTag automatically
+        cashTag = cashTag.replace("$", "").trim();
+
+        /* ================= DATA ================= */
+
+        let athletes = JSON.parse(localStorage.getItem("athletes")) || [
+            { name: "John Smith", event: "101" },
+            { name: "Maria Johnson", event: "202" }
+        ];
+
+        let totalRaised = localStorage.getItem("totalRaised") || 0;
+
+        const athleteSelect = document.getElementById("athleteSelect");
+        const athleteList = document.getElementById("athleteList");
+        const eventInput = document.getElementById("eventNumber");
+        const totalDisplay = document.getElementById("totalRaised");
+
+        totalDisplay.textContent = totalRaised;
+
+        /* ================= LOAD ATHLETES ================= */
+
+        function loadAthletes() {
+            athleteSelect.innerHTML = "";
+            athleteList.innerHTML = "";
+
+            athletes.forEach((athlete, index) => {
+                let option = document.createElement("option");
+                option.value = index;
+                option.textContent = athlete.name + " - Event #" + athlete.event;
+                athleteSelect.appendChild(option);
+
+                let li = document.createElement("li");
+                li.textContent = athlete.name + " — Event #" + athlete.event;
+                athleteList.appendChild(li);
+            });
+
+            if (athletes.length > 0) {
+                eventInput.value = athletes[0].event;
+            }
+        }
+
+        loadAthletes();
+
+        athleteSelect.addEventListener("change", function () {
+            eventInput.value = athletes[this.value].event;
+        });
+
+        /* ================= DONATION ================= */
+
+        function donate() {
+            let amount = document.getElementById("amount").value;
+
+            if (!amount || amount <= 0) {
+                alert("Enter a valid amount.");
+                return;
+            }
+
+            let selected = athletes[athleteSelect.value];
+
+            totalRaised = parseInt(totalRaised) + parseInt(amount);
+            localStorage.setItem("totalRaised", totalRaised);
+            totalDisplay.textContent = totalRaised;
+
+            let note = encodeURIComponent(
+                "Donation for " + selected.name + " (Event #" + selected.event + ")"
+            );
+
+            let link = "https://cash.app/$MasonGross211" ;
+
+            document.getElementById("qrcode").innerHTML = "";
+            new QRCode(document.getElementById("qrcode"), link);
+
+            window.open(link, "_blank");
+        }
+
+        /* ================= ADMIN ================= */
+
+        function unlockAdmin() {
+            if (document.getElementById("adminPass").value === adminPassword) {
+                document.getElementById("adminControls").style.display = "block";
+            } else {
+                alert("Wrong password");
+            }
+        }
+
+        function addAthlete() {
+            let name = document.getElementById("newName").value;
+            let event = document.getElementById("newEvent").value;
+
+            if (name && event) {
+                athletes.push({ name: name, event: event });
+                localStorage.setItem("athletes", JSON.stringify(athletes));
+                loadAthletes();
+            }
+        }
+
+        /* ================= COUNTDOWN ================= */
+
+        setInterval(function () {
+            let now = new Date().getTime();
+            let distance = eventDate - now;
+
+            if (distance < 0) {
+                document.getElementById("countdown").innerHTML = "Event Day!";
+                return;
+            }
+
+            let days = Math.floor(distance / (1000 * 60 * 60 * 24));
+            let hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            let minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+            let seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+            document.getElementById("countdown").innerHTML =
+                days + "d " + hours + "h " + minutes + "m " + seconds + "s";
+        }, 1000);
+
+       
+
+    </script>
+
+</body>
+
+</html>
